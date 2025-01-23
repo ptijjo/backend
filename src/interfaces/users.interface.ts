@@ -1,5 +1,10 @@
 export interface User {
-    id?: number;
-    email: string;
-    password: string;
-  }
+  id?: string;
+  googleId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password?: string;
+  isConnected?: boolean;
+  last_connection?: Date;
+}

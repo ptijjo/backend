@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 datasource db {
-  provider = "mysql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
@@ -10,8 +10,97 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Role {
+  admin
+  modo
+  user
+}
+
+enum StatusEvent {
+  Incoming
+  InProgress
+  Passed
+}
+
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  password String
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  googleId        String?   @unique
+  email           String    @unique
+  avatar          String    @default("https://vibz.s3.eu-central-1.amazonaws.com/logo/photoProfil.png")
+  firstName       String
+  lastName        String
+  password        String?
+  role            Role      @default(user)
+  isConnected     Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updateAt        DateTime  @updatedAt
+  last_connection DateTime?
+
+  //Relations
+  comments   CommentaireEvent[]
+  events     Event[]
+  likes      LikeEvent[]
+  inscripted Inscription[]
+}
+
+model Event {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  location    String
+  date        DateTime
+  category    String
+  status      StatusEvent @default(Incoming)
+  poster      String
+  views       Int
+  authorId    String      @unique @db.ObjectId
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt   DateTime    @default(now())
+  updateAt    DateTime    @updatedAt
+
+  //Relations
+  inscription      Inscription[]
+  likeEvent        LikeEvent[]
+  commentaireEvent CommentaireEvent[]
+}
+
+model Inscription {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  eventId String @db.ObjectId
+  userId  String @db.ObjectId
+
+  //Relations
+  event      Event @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  inscripted User  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([eventId, userId]) //Contrainte : unse seule inscription par user par event
+}
+
+model LikeEvent {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  status Boolean @default(false)
+
+  //Relations
+  likerId      String @db.ObjectId
+  liker        User   @relation(fields: [likerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  eventLikedId String @db.ObjectId
+  eventLiked   Event  @relation(fields: [eventLikedId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([likerId, eventLikedId]) // Contrainte : un seul like par user par event
+}
+
+model CommentaireEvent {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  media     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  //Relations
+  userId  String @db.ObjectId
+  eventId String @db.ObjectId
+  author  User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  @@index([userId, eventId]) // Contrainte : Pour optimiser les recherches par utilisateur et évènement
 }
